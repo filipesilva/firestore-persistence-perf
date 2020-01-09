@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>firebase-emulator-test</title>
+</head>
+
+<body>
+  <script src="https://www.gstatic.com/firebasejs/7.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.6.1/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/7.6.1/firebase-firestore.js"></script>
+  <script>
+    // Delete the IndexedDB used by Firestore
+    var DBDeleteRequest = indexedDB.deleteDatabase('firestore/[DEFAULT]/emulator-test-1/main');
+    DBDeleteRequest.onsuccess = (event) => {
+      // Delete the emulator DB, then add docs.
+      var deleteUrl = 'http://localhost:8080/emulator/v1/projects/emulator-test-1/databases/(default)/documents';
+      fetch(deleteUrl, { method: 'DELETE' })
+        .then(() => {
+          // Setup.
+          var initial = performance.now();
+          var firebaseConfig = {
+            apiKey: "AIzaSyAae-9vGSaHVAmKm7orVPaADUw-SQCUmMo",
+            databaseURL: "https://emulator-test-1.firebaseio.com",
+            projectId: "emulator-test-1",
+          };
+          firebase.initializeApp(firebaseConfig);
+          var useEmulators = true;
+          var db = firebase.firestore();
+          db.settings({ host: 'localhost:8080', ssl: false });
+
+          // Enable persistence.
+          db.enablePersistence();
+          // Listen to the collection.
+          db.collection("users").onSnapshot(querySnapshot => querySnapshot.forEach(doc => doc.data()));
+
+          // Add users and measure how long it takes.
+          var user = { first: "Ada", last: "Lovelace", born: 1815 };
+          var promises = []
+          function addData(data) {
+            var t = performance.now();
+            promises.push(db.collection("users").add(user)
+              .then(docRef => performance.now() - t)
+              .catch(error => console.error("Error adding document: ", error)));
+          }
+          for (let i = 0; i < 100; i++) { addData(user); }
+
+          // Print the average time.
+          Promise.all(promises)
+            .then(values => console.log("write average", values.reduce((p, c) => p + c) / values.length))
+            .then(values => console.log("total time", performance.now() - initial));
+        })
+    }
+  </script>
+</body>
+
+</html>
